@@ -54,7 +54,7 @@ async def _cmd_build_index(xml_dir: Path | None) -> None:
     if not xml_dir.exists():
         print(f"XML directory not found: {xml_dir}")
         print("Download bulk XML from e-Gov first:")
-        print("  curl -o laws.zip 'https://laws.e-gov.go.jp/api/2/laws?file_section=1'")
+        print("  curl -o laws.zip 'https://laws.e-gov.go.jp/bulkdownload?file_section=1&only_xml_flag=true'")
         print(f"  unzip laws.zip -d {xml_dir}")
         sys.exit(1)
 

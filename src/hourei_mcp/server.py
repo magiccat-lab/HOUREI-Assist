@@ -67,8 +67,12 @@ async def tool_get_revision(law_id: str) -> str:
 @mcp.tool()
 async def tool_search_usage(phrase: str, limit: int = 20) -> str:
     """条文表現の用例を全法令から横断検索する(FTS5)。phrase: 検索する法令表現(例: 'の規定にかかわらず'), limit: 最大件数。インデックス未構築の場合はbuild-indexを先に実行してください。"""
-    if _store is None or not config.fts_db_path.exists():
+    if not config.fts_db_path.exists():
         return "インデックスが未構築です。`hourei-mcp build-index` を実行してください。"
+    if _store is not None and _store._conn is None:
+        _store.open()
+    if _store is None:
+        return "サーバー初期化エラー。再起動してください。"
     return search_usage(_store, phrase, limit=limit)
 
 

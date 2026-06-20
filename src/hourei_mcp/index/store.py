@@ -35,6 +35,7 @@ class LawStore:
 
     def insert_chunks(self, chunks: list[ArticleChunk]) -> int:
         inserted = 0
+        skipped = 0
         for chunk in chunks:
             try:
                 self.conn.execute(
@@ -43,7 +44,11 @@ class LawStore:
                     (chunk.law_id, chunk.law_title, chunk.article_num, chunk.paragraph_num, chunk.item_num, chunk.heading, chunk.text, chunk.path),
                 )
                 inserted += 1
-            except sqlite3.Error:
+            except sqlite3.Error as e:
+                skipped += 1
+                if skipped <= 5:
+                    import sys
+                    print(f"  WARN insert: {chunk.path}: {e}", file=sys.stderr)
                 continue
         self.conn.commit()
         return inserted

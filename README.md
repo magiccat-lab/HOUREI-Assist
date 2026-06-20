@@ -19,7 +19,7 @@ pip install -e .
 hourei-mcp smoke-test
 
 # 全文検索インデックスの構築(オプション)
-curl -o laws.zip 'https://laws.e-gov.go.jp/api/2/laws?file_section=1'
+curl -o laws.zip 'https://laws.e-gov.go.jp/bulkdownload?file_section=1&only_xml_flag=true'
 unzip laws.zip -d ~/.local/share/hourei-mcp/xml/
 hourei-mcp build-index
 hourei-mcp check-index
