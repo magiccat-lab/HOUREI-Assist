@@ -18,6 +18,7 @@ def main() -> None:
     build_p = sub.add_parser("build-index", help="全法令XMLからFTS5インデックスを構築")
     build_p.add_argument("--xml-dir", type=Path, help="展開済みXMLディレクトリ")
     sub.add_parser("check-index", help="インデックスの整合性を確認")
+    sub.add_parser("build-vector-index", help="FTS5インデックスからベクトルインデックスを構築(要[vector])")
     sub.add_parser("smoke-test", help="基本動作確認")
 
     args = parser.parse_args()
@@ -28,6 +29,8 @@ def main() -> None:
         asyncio.run(_cmd_build_index(args.xml_dir))
     elif args.command == "check-index":
         _cmd_check_index()
+    elif args.command == "build-vector-index":
+        _cmd_build_vector_index()
     elif args.command == "smoke-test":
         asyncio.run(_cmd_smoke_test())
     else:
@@ -100,6 +103,48 @@ def _cmd_check_index() -> None:
     print(f"  Source: {source}")
     print(f"  Files: {file_count}")
     print(f"  Chunks at build: {chunk_count}")
+
+
+def _cmd_build_vector_index() -> None:
+    try:
+        from .vector.embedder import RuriEmbedder
+        from .vector.store import VectorStore
+    except ImportError:
+        print("ベクトル検索の依存が未インストールです。")
+        print("  pip install hourei-mcp[vector]")
+        sys.exit(1)
+
+    from .config import Config
+    from .index.store import LawStore
+
+    config = Config.from_env()
+    if not config.fts_db_path.exists():
+        print(f"FTS5インデックスが未構築です: {config.fts_db_path}")
+        print("先に hourei-mcp build-index を実行してください。")
+        sys.exit(1)
+
+    fts = LawStore(config.fts_db_path)
+    fts.open()
+    count = fts.article_count()
+    print(f"FTS5インデックス: {count} articles")
+
+    rows = fts.conn.execute(
+        "SELECT law_id, law_title, article_num, paragraph_num, heading, text, path FROM articles"
+    ).fetchall()
+    fts.close()
+
+    texts = [row["text"] for row in rows]
+    metadata = [dict(row) for row in rows]
+
+    print(f"Embedding {len(texts)} articles with Ruri v3...")
+    embedder = RuriEmbedder()
+    embeddings = embedder.embed_documents(texts, batch_size=32)
+    print(f"Embedding shape: {embeddings.shape}")
+
+    vector_dir = config.data_dir / "vector"
+    store = VectorStore(vector_dir)
+    store.build(embeddings, metadata)
+    print(f"Vector index built: {vector_dir}")
 
 
 async def _cmd_smoke_test() -> None:

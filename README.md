@@ -10,6 +10,7 @@
 - **keyword_search**: e-Gov全文検索(AND/OR/NOT/ワイルドカード)
 - **search_usage**: FTS5 trigram全文横断検索(ローカルインデックス)
 - **search_debate**: 国会議事録検索(立法経緯の確認)
+- **similar_articles**: ベクトル類似条文検索(要[vector] extras)
 
 ## セットアップ
 
@@ -57,4 +58,4 @@ pytest
 - [x] Phase 2: HTTP MCP常駐 + systemd
 - [x] Phase 3: 国会議事録API (search_debate)
 - [ ] Phase 3b: 通達・通知検索 (search_circular)
-- [ ] Phase 4: Ruri v3ベクトル検索 + 起草支援
+- [x] Phase 4: Ruri v3ベクトル検索(コード実装済、要[vector] extras)

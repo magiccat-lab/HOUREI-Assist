@@ -13,26 +13,47 @@ from .index.store import LawStore
 from .ndl.client import DietClient
 from .tools.debate import search_debate
 from .tools.law import get_article, get_revision, search_law
+from .tools.similar import similar_articles
 from .tools.usage import search_usage
+
+_HAS_VECTOR = False
+try:
+    import faiss  # noqa: F401
+    import torch  # noqa: F401
+    _HAS_VECTOR = True
+except ImportError:
+    pass
 
 config = Config.from_env()
 
 _egov: EGovClient | None = None
 _store: LawStore | None = None
 _diet: DietClient | None = None
+_embedder: object | None = None
+_vstore: object | None = None
 
 
 @asynccontextmanager
 async def _lifespan(app: FastMCP) -> AsyncIterator[None]:
-    global _egov, _store, _diet
+    global _egov, _store, _diet, _embedder, _vstore
     _egov = EGovClient(config)
     _diet = DietClient()
     _store = LawStore(config.fts_db_path)
     if config.fts_db_path.exists():
         _store.open()
+    if _HAS_VECTOR:
+        from .vector.embedder import RuriEmbedder
+        from .vector.store import VectorStore
+        vs = VectorStore(config.data_dir / "vector")
+        if vs.exists():
+            vs.open()
+            _vstore = vs
+            _embedder = RuriEmbedder()
     try:
         yield
     finally:
+        if _vstore and hasattr(_vstore, "close"):
+            _vstore.close()
         if _store:
             _store.close()
         if _diet:
@@ -117,3 +138,13 @@ async def tool_search_debate(
         date_until=date_until,
         limit=limit,
     )
+
+
+@mcp.tool()
+async def tool_similar_articles(query: str, limit: int = 10) -> str:
+    """類似条文をベクトル検索する。query: 検索テキスト(条文や自然言語), limit: 最大件数。要: pip install hourei-mcp[vector] + build-vector-index"""
+    if not _HAS_VECTOR:
+        return "ベクトル検索は未インストールです。`pip install hourei-mcp[vector]` を実行してください。"
+    if _embedder is None or _vstore is None:
+        return "ベクトルインデックスが未構築です。`hourei-mcp build-vector-index` を実行してください。"
+    return await similar_articles(_embedder, _vstore, query, limit=limit)
