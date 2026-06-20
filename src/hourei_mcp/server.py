@@ -14,14 +14,13 @@ from .tools.law import get_article, get_revision, search_law
 from .tools.usage import search_usage
 
 config = Config.from_env()
-mcp = FastMCP("hourei-assist")
 
 _egov: EGovClient | None = None
 _store: LawStore | None = None
 
 
 @asynccontextmanager
-async def lifespan() -> AsyncIterator[None]:
+async def _lifespan(app: FastMCP) -> AsyncIterator[None]:
     global _egov, _store
     _egov = EGovClient(config)
     _store = LawStore(config.fts_db_path)
@@ -34,6 +33,14 @@ async def lifespan() -> AsyncIterator[None]:
             _store.close()
         if _egov:
             await _egov.close()
+
+
+mcp = FastMCP(
+    "hourei-assist",
+    host=config.host,
+    port=config.port,
+    lifespan=_lifespan,
+)
 
 
 @mcp.tool()

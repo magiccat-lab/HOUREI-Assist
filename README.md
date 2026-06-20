@@ -28,7 +28,7 @@ hourei-mcp check-index
 ## Claude Code / Claude Desktop から使う
 
 ```bash
-claude mcp add --transport http hourei http://127.0.0.1:8790/mcp
+claude mcp add --transport http hourei http://127.0.0.1:8793/mcp
 ```
 
 ## サーバー起動

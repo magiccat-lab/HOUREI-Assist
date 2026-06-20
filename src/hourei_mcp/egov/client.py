@@ -1,11 +1,11 @@
-"""e-Gov 法令API v2 client."""
+"""e-Gov 法令API v2 client — JSON responses."""
 
 from __future__ import annotations
 
+import re
 from typing import Any
 
 import httpx
-from lxml import etree
 
 from ..config import Config
 from ..models import LawRef
@@ -28,95 +28,108 @@ class EGovClient:
             params["category"] = str(category)
         resp = await self._http.get("/laws", params=params)
         resp.raise_for_status()
-        return _parse_law_list(resp.content)
+        data = resp.json()
+        results = []
+        for entry in data.get("laws", []):
+            li = entry.get("law_info", {})
+            ri = entry.get("revision_info", {})
+            law_id = li.get("law_id", "")
+            law_title = ri.get("law_title", "")
+            if law_id and law_title:
+                results.append(LawRef(
+                    law_id=law_id,
+                    law_num=li.get("law_num", ""),
+                    law_title=law_title,
+                    law_type=li.get("law_type", ""),
+                    promulgation_date=li.get("promulgation_date", ""),
+                ))
+        return results
 
     async def keyword_search(self, keyword: str, *, limit: int = 100) -> list[dict[str, str]]:
         params = {"keyword": keyword, "limit": str(min(limit, 1000))}
         resp = await self._http.get("/keyword", params=params)
         resp.raise_for_status()
-        return _parse_keyword_results(resp.content)
+        data = resp.json()
+        results = []
+        for item in data.get("items", []):
+            ri = item.get("revision_info", {})
+            for sentence in item.get("sentences", []):
+                text = _strip_html(sentence.get("text", ""))
+                results.append({
+                    "law_id": item.get("law_info", {}).get("law_id", ""),
+                    "law_title": ri.get("law_title", ""),
+                    "article": sentence.get("position", ""),
+                    "text": text,
+                })
+        return results
 
-    async def get_law_data(self, law_id: str) -> bytes:
-        resp = await self._http.get(f"/laws/{law_id}")
+    async def get_law_data(self, law_id: str) -> dict[str, Any]:
+        revisions = await self.get_revisions(law_id)
+        if not revisions:
+            raise ValueError(f"No revisions found for {law_id}")
+        revision_id = revisions[0]["revision_id"]
+        resp = await self._http.get(f"/law_data/{revision_id}")
         resp.raise_for_status()
-        return resp.content
+        return resp.json()
 
     async def get_article(self, law_id: str, article: str, *, paragraph: str = "") -> str:
-        xml_bytes = await self.get_law_data(law_id)
-        return _extract_article(xml_bytes, article, paragraph)
+        data = await self.get_law_data(law_id)
+        tree = data.get("law_full_text", {})
+        return _extract_article_from_tree(tree, article, paragraph)
 
     async def get_revisions(self, law_id: str) -> list[dict[str, str]]:
         resp = await self._http.get(f"/law_revisions/{law_id}")
         resp.raise_for_status()
-        return _parse_revisions(resp.content)
+        data = resp.json()
+        results = []
+        for rev in data.get("revisions", []):
+            results.append({
+                "revision_id": rev.get("law_revision_id", ""),
+                "amendment_law": rev.get("amendment_law_title") or rev.get("law_title", ""),
+                "amendment_date": rev.get("amendment_promulgate_date", ""),
+            })
+        return results
 
 
-def _parse_law_list(xml_bytes: bytes) -> list[LawRef]:
-    root = etree.fromstring(xml_bytes)
-    results = []
-    for law in root.iter("LawNameListInfo"):
-        law_id = _text(law, "LawId")
-        law_num = _text(law, "LawNo")
-        law_title = _text(law, "LawName")
-        law_type = _text(law, "LawType")
-        promulgation_date = _text(law, "PromulgationDate")
-        if law_id and law_title:
-            results.append(LawRef(
-                law_id=law_id,
-                law_num=law_num,
-                law_title=law_title,
-                law_type=law_type,
-                promulgation_date=promulgation_date,
-            ))
-    return results
+def _strip_html(text: str) -> str:
+    return re.sub(r"<[^>]+>", "", text)
 
 
-def _parse_keyword_results(xml_bytes: bytes) -> list[dict[str, str]]:
-    root = etree.fromstring(xml_bytes)
-    results = []
-    for item in root.iter("Result"):
-        results.append({
-            "law_id": _text(item, "LawId"),
-            "law_title": _text(item, "LawName"),
-            "article": _text(item, "Article"),
-            "text": _text(item, "Text"),
-        })
-    return results
+def _collect_text(node: dict | str | list) -> str:
+    if isinstance(node, str):
+        return node
+    if isinstance(node, list):
+        return "".join(_collect_text(c) for c in node)
+    if isinstance(node, dict):
+        parts = []
+        for child in node.get("children", []):
+            parts.append(_collect_text(child))
+        return "".join(parts)
+    return ""
 
 
-def _extract_article(xml_bytes: bytes, article_num: str, paragraph_num: str) -> str:
-    root = etree.fromstring(xml_bytes)
-    lines: list[str] = []
-    for article in root.iter("Article"):
-        num = article.get("Num", "")
+def _find_nodes(node: dict, tag: str) -> list[dict]:
+    found = []
+    if isinstance(node, dict):
+        if node.get("tag") == tag:
+            found.append(node)
+        for child in node.get("children", []):
+            if isinstance(child, dict):
+                found.extend(_find_nodes(child, tag))
+    return found
+
+
+def _extract_article_from_tree(tree: dict, article_num: str, paragraph_num: str) -> str:
+    articles = _find_nodes(tree, "Article")
+    for article in articles:
+        num = (article.get("attr") or {}).get("Num", "")
         if num != article_num:
             continue
         if paragraph_num:
-            for para in article.iter("Paragraph"):
-                if para.get("Num", "") == paragraph_num:
-                    lines.append(_collect_text(para))
+            for para in _find_nodes(article, "Paragraph"):
+                if (para.get("attr") or {}).get("Num", "") == paragraph_num:
+                    return _collect_text(para)
         else:
-            lines.append(_collect_text(article))
+            return _collect_text(article)
         break
-    return "\n".join(lines) if lines else f"Article {article_num} not found"
-
-
-def _parse_revisions(xml_bytes: bytes) -> list[dict[str, str]]:
-    root = etree.fromstring(xml_bytes)
-    results = []
-    for rev in root.iter("LawRevisionInfo"):
-        results.append({
-            "revision_id": _text(rev, "LawRevisionId"),
-            "amendment_law": _text(rev, "AmendmentLawName"),
-            "amendment_date": _text(rev, "AmendmentPromulgateDate"),
-        })
-    return results
-
-
-def _text(elem: etree._Element, tag: str) -> str:
-    child = elem.find(f".//{tag}")
-    return (child.text or "").strip() if child is not None else ""
-
-
-def _collect_text(elem: etree._Element) -> str:
-    return "".join(elem.itertext()).strip()
+    return f"Article {article_num} not found"

@@ -4,13 +4,12 @@ After=network.target
 
 [Service]
 Type=simple
-User=%i
-WorkingDirectory=%h
-ExecStart=%h/.local/bin/hourei-mcp serve
+WorkingDirectory=/home/shun/HOUREI-Assist
+ExecStart=/home/shun/HOUREI-Assist/.venv/bin/hourei-mcp serve
 Restart=on-failure
 RestartSec=5
 Environment=HOUREI_HOST=127.0.0.1
-Environment=HOUREI_PORT=8790
+Environment=HOUREI_PORT=8793
 
 [Install]
-WantedBy=multi-user.target
+WantedBy=default.target
