@@ -10,6 +10,8 @@ from mcp.server.fastmcp import FastMCP
 from .config import Config
 from .egov.client import EGovClient
 from .index.store import LawStore
+from .ndl.client import DietClient
+from .tools.debate import search_debate
 from .tools.law import get_article, get_revision, search_law
 from .tools.usage import search_usage
 
@@ -17,12 +19,14 @@ config = Config.from_env()
 
 _egov: EGovClient | None = None
 _store: LawStore | None = None
+_diet: DietClient | None = None
 
 
 @asynccontextmanager
 async def _lifespan(app: FastMCP) -> AsyncIterator[None]:
-    global _egov, _store
+    global _egov, _store, _diet
     _egov = EGovClient(config)
+    _diet = DietClient()
     _store = LawStore(config.fts_db_path)
     if config.fts_db_path.exists():
         _store.open()
@@ -31,6 +35,8 @@ async def _lifespan(app: FastMCP) -> AsyncIterator[None]:
     finally:
         if _store:
             _store.close()
+        if _diet:
+            await _diet.close()
         if _egov:
             await _egov.close()
 
@@ -89,3 +95,25 @@ async def tool_keyword_search(keyword: str, limit: int = 100) -> str:
         lines.append(r.get("text", "")[:300])
         lines.append("")
     return "\n".join(lines)
+
+
+@mcp.tool()
+async def tool_search_debate(
+    keyword: str,
+    speaker: str = "",
+    meeting: str = "",
+    date_from: str = "",
+    date_until: str = "",
+    limit: int = 20,
+) -> str:
+    """国会議事録を検索する(立法経緯の確認)。keyword: 検索キーワード, speaker: 発言者名, meeting: 委員会名(例: '法務委員会'), date_from: 開始日(YYYY-MM-DD), date_until: 終了日, limit: 最大件数"""
+    assert _diet is not None
+    return await search_debate(
+        _diet,
+        keyword,
+        speaker=speaker,
+        meeting=meeting,
+        date_from=date_from,
+        date_until=date_until,
+        limit=limit,
+    )

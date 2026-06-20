@@ -9,6 +9,7 @@
 - **get_revision**: 改正履歴取得
 - **keyword_search**: e-Gov全文検索(AND/OR/NOT/ワイルドカード)
 - **search_usage**: FTS5 trigram全文横断検索(ローカルインデックス)
+- **search_debate**: 国会議事録検索(立法経緯の確認)
 
 ## セットアップ
 
@@ -53,6 +54,7 @@ pytest
 ## ロードマップ
 
 - [x] Phase 1: e-Gov API + FTS5全文検索
-- [ ] Phase 2: HTTP MCP常駐 + systemd
-- [ ] Phase 3: 国会議事録API / 通達検索
+- [x] Phase 2: HTTP MCP常駐 + systemd
+- [x] Phase 3: 国会議事録API (search_debate)
+- [ ] Phase 3b: 通達・通知検索 (search_circular)
 - [ ] Phase 4: Ruri v3ベクトル検索 + 起草支援
