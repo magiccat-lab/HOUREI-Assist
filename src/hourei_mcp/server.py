@@ -16,14 +16,6 @@ from .tools.law import get_article, get_revision, search_law
 from .tools.similar import similar_articles
 from .tools.usage import search_usage
 
-_HAS_VECTOR = False
-try:
-    import faiss  # noqa: F401
-    import torch  # noqa: F401
-    _HAS_VECTOR = True
-except ImportError:
-    pass
-
 config = Config.from_env()
 
 _egov: EGovClient | None = None
@@ -31,24 +23,17 @@ _store: LawStore | None = None
 _diet: DietClient | None = None
 _embedder: object | None = None
 _vstore: object | None = None
+_vector_error: str | None = None
 
 
 @asynccontextmanager
 async def _lifespan(app: FastMCP) -> AsyncIterator[None]:
-    global _egov, _store, _diet, _embedder, _vstore
+    global _egov, _store, _diet
     _egov = EGovClient(config)
     _diet = DietClient()
     _store = LawStore(config.fts_db_path)
     if config.fts_db_path.exists():
         _store.open()
-    if _HAS_VECTOR:
-        from .vector.embedder import RuriEmbedder
-        from .vector.store import VectorStore
-        vs = VectorStore(config.data_dir / "vector")
-        if vs.exists():
-            vs.open()
-            _vstore = vs
-            _embedder = RuriEmbedder()
     try:
         yield
     finally:
@@ -60,6 +45,38 @@ async def _lifespan(app: FastMCP) -> AsyncIterator[None]:
             await _diet.close()
         if _egov:
             await _egov.close()
+
+
+def _ensure_vector() -> str | None:
+    """Lazy-load vector search. Returns error message or None on success."""
+    global _embedder, _vstore, _vector_error
+    if _vector_error is not None:
+        return _vector_error
+    if _embedder is not None and _vstore is not None:
+        return None
+    try:
+        import faiss  # noqa: F401
+    except ImportError:
+        _vector_error = "ベクトル検索は未インストールです。`pip install hourei-mcp[vector]` を実行してください。"
+        return _vector_error
+    try:
+        from .vector.store import VectorStore
+        vs = VectorStore(config.data_dir / "vector")
+        if not vs.exists():
+            _vector_error = "ベクトルインデックスが未構築です。`hourei-mcp build-vector-index` を実行してください。"
+            return _vector_error
+        vs.open()
+        _vstore = vs
+    except Exception as e:
+        _vector_error = f"ベクトルストア読込失敗: {e}"
+        return _vector_error
+    try:
+        from .vector.embedder import RuriEmbedder
+        _embedder = RuriEmbedder()
+    except Exception as e:
+        _vector_error = f"Ruri v3モデルロード失敗: {e}"
+        return _vector_error
+    return None
 
 
 mcp = FastMCP(
@@ -143,8 +160,7 @@ async def tool_search_debate(
 @mcp.tool()
 async def tool_similar_articles(query: str, limit: int = 10) -> str:
     """類似条文をベクトル検索する。query: 検索テキスト(条文や自然言語), limit: 最大件数。要: pip install hourei-mcp[vector] + build-vector-index"""
-    if not _HAS_VECTOR:
-        return "ベクトル検索は未インストールです。`pip install hourei-mcp[vector]` を実行してください。"
-    if _embedder is None or _vstore is None:
-        return "ベクトルインデックスが未構築です。`hourei-mcp build-vector-index` を実行してください。"
+    err = _ensure_vector()
+    if err:
+        return err
     return await similar_articles(_embedder, _vstore, query, limit=limit)

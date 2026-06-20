@@ -43,7 +43,7 @@ class DietClient:
     ) -> tuple[int, list[SpeechRecord]]:
         params: dict[str, Any] = {
             "any": keyword,
-            "maximumRecords": str(min(limit, 100)),
+            "maximumRecords": str(max(1, min(limit, 100))),
             "recordPacking": "json",
         }
         if speaker:
