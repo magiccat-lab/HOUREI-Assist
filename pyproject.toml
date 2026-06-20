@@ -1,0 +1,42 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "hourei-mcp"
+version = "0.1.0"
+description = "法令検索MCP — e-Gov法令API + FTS5 + ベクトル検索で条文起草を支援"
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.11"
+dependencies = [
+    "mcp[cli]>=1.0.0",
+    "httpx>=0.27",
+    "lxml>=5.0",
+    "pydantic>=2.0",
+]
+
+[project.optional-dependencies]
+vector = [
+    "torch>=2.0",
+    "transformers>=4.40",
+    "faiss-cpu>=1.8",
+    "numpy>=1.26",
+]
+dev = [
+    "pytest>=8.0",
+    "ruff>=0.5",
+]
+
+[project.scripts]
+hourei-mcp = "hourei_mcp.cli:main"
+
+[tool.ruff]
+target-version = "py311"
+line-length = 120
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "W"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

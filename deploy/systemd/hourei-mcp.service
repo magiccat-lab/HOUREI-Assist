@@ -1,0 +1,16 @@
+[Unit]
+Description=HOUREI-Assist MCP Server
+After=network.target
+
+[Service]
+Type=simple
+User=%i
+WorkingDirectory=%h
+ExecStart=%h/.local/bin/hourei-mcp serve
+Restart=on-failure
+RestartSec=5
+Environment=HOUREI_HOST=127.0.0.1
+Environment=HOUREI_PORT=8790
+
+[Install]
+WantedBy=multi-user.target

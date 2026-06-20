@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Law Era="Meiji" Year="29" Num="89" LawType="Act">
+  <LawNum>明治二十九年法律第八十九号</LawNum>
+  <LawBody>
+    <LawTitle>民法</LawTitle>
+    <MainProvision>
+      <Part Num="1">
+        <PartTitle>第一編　総則</PartTitle>
+        <Chapter Num="1">
+          <ChapterTitle>第一章　通則</ChapterTitle>
+          <Article Num="1">
+            <ArticleCaption>（基本原則）</ArticleCaption>
+            <ArticleTitle>第一条</ArticleTitle>
+            <Paragraph Num="1">
+              <ParagraphNum/>
+              <ParagraphSentence>
+                <Sentence>私権は、公共の福祉に適合しなければならない。</Sentence>
+              </ParagraphSentence>
+            </Paragraph>
+            <Paragraph Num="2">
+              <ParagraphNum>２</ParagraphNum>
+              <ParagraphSentence>
+                <Sentence>権利の行使及び義務の履行は、信義に従い誠実に行わなければならない。</Sentence>
+              </ParagraphSentence>
+            </Paragraph>
+            <Paragraph Num="3">
+              <ParagraphNum>３</ParagraphNum>
+              <ParagraphSentence>
+                <Sentence>権利の濫用は、これを許さない。</Sentence>
+              </ParagraphSentence>
+            </Paragraph>
+          </Article>
+          <Article Num="2">
+            <ArticleCaption>（解釈の基準）</ArticleCaption>
+            <ArticleTitle>第二条</ArticleTitle>
+            <Paragraph Num="1">
+              <ParagraphNum/>
+              <ParagraphSentence>
+                <Sentence>この法律は、個人の尊厳と両性の本質的平等を旨として、解釈しなければならない。</Sentence>
+              </ParagraphSentence>
+            </Paragraph>
+          </Article>
+        </Chapter>
+      </Part>
+    </MainProvision>
+  </LawBody>
+</Law>
