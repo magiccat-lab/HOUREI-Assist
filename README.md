@@ -11,6 +11,9 @@
 - **search_usage**: FTS5 trigram全文横断検索(ローカルインデックス)
 - **search_debate**: 国会議事録検索(立法経緯の確認)
 - **similar_articles**: ベクトル類似条文検索(要[vector] extras)
+- **get_rules**: 法令検索ルール確認(Notion SSoT)
+- **hourei_start** (prompt): 作業開始時にルールを会話に注入
+- **hourei://rules/current** (resource): ルール全文参照
 
 ## セットアップ
 
@@ -39,9 +42,19 @@ claude mcp add --transport http hourei http://127.0.0.1:8793/mcp
 hourei-mcp serve
 ```
 
-systemd常駐:
+### Notion ルール連携(オプション)
+
+```bash
+mkdir -p ~/.config/hourei-mcp
+cp deploy/env.example ~/.config/hourei-mcp/env
+# env を編集: NOTION_API_KEY, HOUREI_RULES_PAGE_ID を設定
+```
+
+### systemd常駐
+
 ```bash
 cp deploy/systemd/hourei-mcp.service ~/.config/systemd/user/
+systemctl --user daemon-reload
 systemctl --user enable --now hourei-mcp
 ```
 

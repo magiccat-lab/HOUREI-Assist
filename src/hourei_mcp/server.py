@@ -11,6 +11,7 @@ from .config import Config
 from .egov.client import EGovClient
 from .index.store import LawStore
 from .ndl.client import DietClient
+from .rules.provider import RuleProvider
 from .tools.debate import search_debate
 from .tools.law import get_article, get_revision, search_law
 from .tools.similar import similar_articles
@@ -21,6 +22,7 @@ config = Config.from_env()
 _egov: EGovClient | None = None
 _store: LawStore | None = None
 _diet: DietClient | None = None
+_rules: RuleProvider | None = None
 _embedder: object | None = None
 _vstore: object | None = None
 _vector_error: str | None = None
@@ -28,15 +30,24 @@ _vector_error: str | None = None
 
 @asynccontextmanager
 async def _lifespan(app: FastMCP) -> AsyncIterator[None]:
-    global _egov, _store, _diet
+    global _egov, _store, _diet, _rules
     _egov = EGovClient(config)
     _diet = DietClient()
     _store = LawStore(config.fts_db_path)
     if config.fts_db_path.exists():
         _store.open()
+    if config.notion_api_key and config.notion_rules_page_id:
+        _rules = RuleProvider(
+            config.notion_api_key,
+            config.notion_rules_page_id,
+            ttl=config.rules_cache_ttl,
+            cache_dir=config.data_dir,
+        )
     try:
         yield
     finally:
+        if _rules:
+            await _rules.close()
         if _vstore and hasattr(_vstore, "close"):
             _vstore.close()
         if _store:
@@ -85,6 +96,43 @@ mcp = FastMCP(
     port=config.port,
     lifespan=_lifespan,
 )
+
+
+# --- Rules resource / prompt / tool ---
+
+
+@mcp.resource("hourei://rules/current")
+async def resource_rules() -> str:
+    """現在の法令検索ルール(Notion SSoT)を返す。"""
+    if not _rules:
+        return "ルール未設定。NOTION_API_KEY と HOUREI_RULES_PAGE_ID を設定してください。"
+    text = await _rules.get_rules()
+    return text or "ルールページが空です。"
+
+
+@mcp.prompt()
+async def hourei_start() -> str:
+    """法令調査・起草作業の開始時にルールを会話に注入する。"""
+    if not _rules:
+        return "法令検索ルールが未設定です。Notionページを設定してください。"
+    text = await _rules.get_rules()
+    if not text:
+        return "法令検索ルールが空です。Notionページにルールを追加してください。"
+    return f"以下の法令検索ルールに従って作業してください。\n\n---\n{text}\n---"
+
+
+@mcp.tool()
+async def tool_get_rules(force_refresh: bool = False) -> str:
+    """現在の法令検索ルールを確認する。force_refresh=trueでNotionから再取得。"""
+    if not _rules:
+        return "ルール未設定。NOTION_API_KEY と HOUREI_RULES_PAGE_ID を環境変数に設定してください。"
+    text = await _rules.get_rules(force=force_refresh)
+    if not text:
+        return "ルールページが空です。Notionページにルールを追加してください。"
+    return text
+
+
+# --- Law tools ---
 
 
 @mcp.tool()

@@ -10,6 +10,7 @@ Restart=on-failure
 RestartSec=5
 Environment=HOUREI_HOST=127.0.0.1
 Environment=HOUREI_PORT=8793
+EnvironmentFile=-%h/.config/hourei-mcp/env
 
 [Install]
 WantedBy=default.target
