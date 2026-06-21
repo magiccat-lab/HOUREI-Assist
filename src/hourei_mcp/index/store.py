@@ -39,9 +39,16 @@ class LawStore:
         for chunk in chunks:
             try:
                 self.conn.execute(
-                    "INSERT OR REPLACE INTO articles (law_id, law_title, article_num, paragraph_num, item_num, heading, text, path) "
-                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-                    (chunk.law_id, chunk.law_title, chunk.article_num, chunk.paragraph_num, chunk.item_num, chunk.heading, chunk.text, chunk.path),
+                    "INSERT OR REPLACE INTO articles"
+                    " (law_id, law_title, article_num,"
+                    " paragraph_num, item_num, heading, text, path)"
+                    " VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                    (
+                        chunk.law_id, chunk.law_title,
+                        chunk.article_num, chunk.paragraph_num,
+                        chunk.item_num, chunk.heading,
+                        chunk.text, chunk.path,
+                    ),
                 )
                 inserted += 1
             except sqlite3.Error as e:

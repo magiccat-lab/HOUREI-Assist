@@ -11,7 +11,11 @@ from pathlib import Path
 class Config:
     host: str = "127.0.0.1"
     port: int = 8793
-    data_dir: Path = field(default_factory=lambda: Path(os.environ.get("HOUREI_DATA_DIR", "~/.local/share/hourei-mcp")).expanduser())
+    data_dir: Path = field(
+        default_factory=lambda: Path(
+            os.environ.get("HOUREI_DATA_DIR", "~/.local/share/hourei-mcp"),
+        ).expanduser(),
+    )
     egov_base_url: str = "https://laws.e-gov.go.jp/api/2"
     egov_timeout: float = 30.0
     fts_db_name: str = "hourei.db"

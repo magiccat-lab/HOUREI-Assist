@@ -158,7 +158,11 @@ async def tool_get_revision(law_id: str) -> str:
 
 @mcp.tool()
 async def tool_search_usage(phrase: str, limit: int = 20) -> str:
-    """条文表現の用例を全法令から横断検索する(FTS5)。phrase: 検索する法令表現(例: 'の規定にかかわらず'), limit: 最大件数。インデックス未構築の場合はbuild-indexを先に実行してください。"""
+    """条文表現の用例を全法令から横断検索する(FTS5)。
+
+    phrase: 検索する法令表現(例: 'の規定にかかわらず'), limit: 最大件数。
+    インデックス未構築の場合はbuild-indexを先に実行してください。
+    """
     if not config.fts_db_path.exists():
         return "インデックスが未構築です。`hourei-mcp build-index` を実行してください。"
     if _store is not None and _store._conn is None:
@@ -170,7 +174,10 @@ async def tool_search_usage(phrase: str, limit: int = 20) -> str:
 
 @mcp.tool()
 async def tool_keyword_search(keyword: str, limit: int = 100) -> str:
-    """e-Gov全文検索API(/keyword)で法令本文を横断検索する。AND/OR/NOT/ワイルドカード対応。keyword: 検索式, limit: 最大件数(最大1000)"""
+    """e-Gov全文検索API(/keyword)で法令本文を横断検索する。
+
+    AND/OR/NOT/ワイルドカード対応。keyword: 検索式, limit: 最大件数(最大1000)
+    """
     assert _egov is not None
     results = await _egov.keyword_search(keyword, limit=limit)
     if not results:
@@ -192,7 +199,12 @@ async def tool_search_debate(
     date_until: str = "",
     limit: int = 20,
 ) -> str:
-    """国会議事録を検索する(立法経緯の確認)。keyword: 検索キーワード, speaker: 発言者名, meeting: 委員会名(例: '法務委員会'), date_from: 開始日(YYYY-MM-DD), date_until: 終了日, limit: 最大件数"""
+    """国会議事録を検索する(立法経緯の確認)。
+
+    keyword: 検索キーワード, speaker: 発言者名,
+    meeting: 委員会名(例: '法務委員会'),
+    date_from: 開始日(YYYY-MM-DD), date_until: 終了日, limit: 最大件数
+    """
     assert _diet is not None
     return await search_debate(
         _diet,
@@ -207,7 +219,11 @@ async def tool_search_debate(
 
 @mcp.tool()
 async def tool_similar_articles(query: str, limit: int = 10) -> str:
-    """類似条文をベクトル検索する。query: 検索テキスト(条文や自然言語), limit: 最大件数。要: pip install hourei-mcp[vector] + build-vector-index"""
+    """類似条文をベクトル検索する。
+
+    query: 検索テキスト(条文や自然言語), limit: 最大件数。
+    要: pip install hourei-mcp[vector] + build-vector-index
+    """
     err = _ensure_vector()
     if err:
         return err

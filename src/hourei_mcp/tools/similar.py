@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from ..models import SearchHit
-
 
 async def similar_articles(
     embedder: object,

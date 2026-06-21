@@ -29,5 +29,8 @@ async def get_revision(client: EGovClient, law_id: str) -> str:
         return "改正履歴は見つかりませんでした。"
     lines = ["## 改正履歴"]
     for rev in revisions:
-        lines.append(f"- {rev.get('amendment_date', '?')} {rev.get('amendment_law', '?')} [rev: {rev.get('revision_id', '')}]")
+        date = rev.get('amendment_date', '?')
+        law = rev.get('amendment_law', '?')
+        rid = rev.get('revision_id', '')
+        lines.append(f"- {date} {law} [rev: {rid}]")
     return "\n".join(lines)
