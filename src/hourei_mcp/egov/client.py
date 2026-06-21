@@ -23,7 +23,7 @@ class EGovClient:
         await self._http.aclose()
 
     async def search_laws(self, keyword: str, *, category: int | None = None, limit: int = 20) -> list[LawRef]:
-        params: dict[str, Any] = {"keyword": keyword, "limit": str(min(limit, 100))}
+        params: dict[str, Any] = {"law_title": keyword, "limit": str(min(limit, 100))}
         if category is not None:
             params["category"] = str(category)
         resp = await self._http.get("/laws", params=params)
@@ -46,8 +46,15 @@ class EGovClient:
         return results
 
     async def keyword_search(self, keyword: str, *, limit: int = 100) -> list[dict[str, str]]:
-        params = {"keyword": keyword, "limit": str(min(limit, 1000))}
+        cleaned = re.sub(r'\b(AND|OR|NOT)\b', ' ', keyword).strip()
+        cleaned = re.sub(r'[*?]', '', cleaned)
+        cleaned = re.sub(r'\s+', ' ', cleaned)
+        if not cleaned:
+            return []
+        params = {"keyword": cleaned, "limit": str(min(limit, 1000))}
         resp = await self._http.get("/keyword", params=params)
+        if resp.status_code == 404:
+            return []
         resp.raise_for_status()
         data = resp.json()
         results = []

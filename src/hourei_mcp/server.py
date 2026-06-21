@@ -176,7 +176,7 @@ async def tool_search_usage(phrase: str, limit: int = 20) -> str:
 async def tool_keyword_search(keyword: str, limit: int = 100) -> str:
     """e-Gov全文検索API(/keyword)で法令本文を横断検索する。
 
-    AND/OR/NOT/ワイルドカード対応。keyword: 検索式, limit: 最大件数(最大1000)
+    スペース区切りで暗黙AND検索。keyword: 検索キーワード, limit: 最大件数(最大1000)
     """
     assert _egov is not None
     results = await _egov.keyword_search(keyword, limit=limit)
